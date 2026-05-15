@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { CartProvider, useCart } from "../context/CartContext";
 import { View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 function CartTabIcon({ color, size }: { color: string; size: number }) {
   const { totalItems } = useCart();
@@ -32,7 +33,35 @@ function CartTabIcon({ color, size }: { color: string; size: number }) {
   );
 }
 
+function CartHeaderBadge() {
+  const { totalItems, subtotal } = useCart();
+  if (totalItems === 0) return null;
+  return (
+    <View
+      style={{
+        marginRight: 16,
+        backgroundColor: "#fff7ed",
+        borderRadius: 99,
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderWidth: 1,
+        borderColor: "#fed7aa",
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 4,
+      }}
+    >
+      <Text style={{ fontSize: 12 }}>🛍️</Text>
+      <Text style={{ color: "#ea580c", fontWeight: "700", fontSize: 12 }}>
+        {totalItems} · ${subtotal.toFixed(2)}
+      </Text>
+    </View>
+  );
+}
+
 function AppTabs() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tabs
       screenOptions={{
@@ -41,8 +70,8 @@ function AppTabs() {
         tabBarStyle: {
           backgroundColor: "#ffffff",
           borderTopColor: "#f3f4f6",
-          paddingBottom: 6,
-          height: 60,
+          paddingBottom: 6 + insets.bottom,
+          height: 40 + insets.bottom,
         },
         tabBarLabelStyle: { fontSize: 11, fontWeight: "600" },
         headerStyle: { backgroundColor: "#ffffff" },
@@ -74,6 +103,7 @@ function AppTabs() {
             />
           ),
           headerTitle: "✨ AI Assistant",
+          headerRight: () => <CartHeaderBadge />,
         }}
       />
       <Tabs.Screen

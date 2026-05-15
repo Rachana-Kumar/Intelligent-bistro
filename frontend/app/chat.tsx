@@ -225,7 +225,10 @@ export default function ChatScreen() {
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messages.length > 0) {
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+      setTimeout(
+        () => flatListRef.current?.scrollToEnd({ animated: true }),
+        100,
+      );
     }
   }, [messages, loading]);
 
@@ -318,8 +321,8 @@ export default function ChatScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: "#f9fafb" }}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 90}
     >
       {/* Message list */}
       <FlatList
@@ -333,7 +336,12 @@ export default function ChatScreen() {
           showSuggestions ? (
             <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
               <Text
-                style={{ color: "#9ca3af", fontSize: 12, marginBottom: 8, textAlign: "center" }}
+                style={{
+                  color: "#9ca3af",
+                  fontSize: 12,
+                  marginBottom: 8,
+                  textAlign: "center",
+                }}
               >
                 Try asking...
               </Text>
@@ -352,7 +360,13 @@ export default function ChatScreen() {
                         borderColor: "#fed7aa",
                       }}
                     >
-                      <Text style={{ color: "#ea580c", fontSize: 13, fontWeight: "500" }}>
+                      <Text
+                        style={{
+                          color: "#ea580c",
+                          fontSize: 13,
+                          fontWeight: "500",
+                        }}
+                      >
                         {s}
                       </Text>
                     </TouchableOpacity>
@@ -411,8 +425,7 @@ export default function ChatScreen() {
             width: 44,
             height: 44,
             borderRadius: 22,
-            backgroundColor:
-              !input.trim() || loading ? "#e5e7eb" : "#f97316",
+            backgroundColor: !input.trim() || loading ? "#e5e7eb" : "#f97316",
             alignItems: "center",
             justifyContent: "center",
           }}

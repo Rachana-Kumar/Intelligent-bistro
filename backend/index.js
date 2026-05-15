@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const Anthropic = require("@anthropic-ai/sdk");
+const Groq = require("groq-sdk");
 const menu = require("./menu.json");
 
 const app = express();
@@ -10,9 +10,9 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Build a compact menu string to inject into the Claude system prompt
+// Build a compact menu string to inject into the system prompt
 function buildMenuContext() {
   return menu
     .map(
@@ -82,7 +82,7 @@ app.get("/menu/categories", (req, res) => {
   res.json({ success: true, categories });
 });
 
-// POST /chat — sends a user message to Claude and returns reply + action
+// POST /chat — sends a user message to Groq and returns reply + action
 app.post("/chat", async (req, res) => {
   const { message, cartItems = [] } = req.body;
 
@@ -93,16 +93,18 @@ app.post("/chat", async (req, res) => {
   }
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-20250514",
+    const response = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
       max_tokens: 512,
-      system: buildSystemPrompt(cartItems),
-      messages: [{ role: "user", content: message.trim() }],
+      messages: [
+        { role: "system", content: buildSystemPrompt(cartItems) },
+        { role: "user", content: message.trim() },
+      ],
     });
 
-    const raw = response.content[0].text.trim();
+    const raw = response.choices[0].message.content.trim();
 
-    // Strip markdown code fences if Claude wraps them anyway
+    // Strip markdown code fences if the model wraps them anyway
     const cleaned = raw
       .replace(/^```json\s*/i, "")
       .replace(/```\s*$/i, "")
@@ -126,7 +128,7 @@ app.post("/chat", async (req, res) => {
       action: parsed.action || null,
     });
   } catch (err) {
-    console.error("Anthropic API error:", err.message);
+    console.error("Groq API error:", err.message);
     return res.status(500).json({
       success: false,
       error: "AI service unavailable. Please try again.",
