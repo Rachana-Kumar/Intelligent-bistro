@@ -1,0 +1,164 @@
+[
+  {
+    "id": "s001",
+    "name": "Truffle Arancini",
+    "description": "Crispy risotto balls with black truffle and parmesan, served with marinara dip",
+    "price": 12.99,
+    "category": "Starters",
+    "tags": ["vegetarian", "crispy", "popular"],
+    "emoji": "🧀"
+  },
+  {
+    "id": "s002",
+    "name": "Spicy Tuna Tartare",
+    "description": "Fresh ahi tuna, avocado, sriracha aioli, sesame oil, wonton crisps",
+    "price": 16.99,
+    "category": "Starters",
+    "tags": ["spicy", "seafood", "raw"],
+    "emoji": "🐟"
+  },
+  {
+    "id": "s003",
+    "name": "Burrata & Heirloom Tomato",
+    "description": "Creamy burrata, heirloom tomatoes, fresh basil, balsamic glaze, sea salt",
+    "price": 14.99,
+    "category": "Starters",
+    "tags": ["vegetarian", "fresh", "light"],
+    "emoji": "🍅"
+  },
+  {
+    "id": "s004",
+    "name": "Chicken Wings",
+    "description": "Double-fried wings in your choice of buffalo, BBQ, or honey garlic sauce",
+    "price": 13.99,
+    "category": "Starters",
+    "tags": ["spicy", "popular", "shareable"],
+    "emoji": "🍗"
+  },
+  {
+    "id": "m001",
+    "name": "Wagyu Smash Burger",
+    "description": "Double wagyu patty, aged cheddar, caramelized onions, secret sauce, brioche bun",
+    "price": 22.99,
+    "category": "Mains",
+    "tags": ["beef", "popular", "indulgent"],
+    "emoji": "🍔"
+  },
+  {
+    "id": "m002",
+    "name": "Spicy Chicken Sandwich",
+    "description": "Crispy fried chicken thigh, ghost pepper mayo, pickles, shredded slaw, potato bun",
+    "price": 17.99,
+    "category": "Mains",
+    "tags": ["spicy", "chicken", "popular"],
+    "emoji": "🌶️"
+  },
+  {
+    "id": "m003",
+    "name": "Pan-Seared Salmon",
+    "description": "Atlantic salmon, lemon beurre blanc, roasted asparagus, wild rice pilaf",
+    "price": 26.99,
+    "category": "Mains",
+    "tags": ["seafood", "healthy", "gluten-free"],
+    "emoji": "🐟"
+  },
+  {
+    "id": "m004",
+    "name": "Mushroom Risotto",
+    "description": "Arborio rice, mixed wild mushrooms, white wine, parmesan, truffle oil, chives",
+    "price": 19.99,
+    "category": "Mains",
+    "tags": ["vegetarian", "creamy", "gluten-free"],
+    "emoji": "🍄"
+  },
+  {
+    "id": "m005",
+    "name": "BBQ Brisket Plate",
+    "description": "12-hour smoked beef brisket, house BBQ, coleslaw, pickles, cornbread",
+    "price": 28.99,
+    "category": "Mains",
+    "tags": ["beef", "smoky", "hearty"],
+    "emoji": "🥩"
+  },
+  {
+    "id": "m006",
+    "name": "Margherita Pizza",
+    "description": "San Marzano tomato, fresh mozzarella, basil, extra-virgin olive oil, 00 flour crust",
+    "price": 18.99,
+    "category": "Mains",
+    "tags": ["vegetarian", "shareable", "classic"],
+    "emoji": "🍕"
+  },
+  {
+    "id": "d001",
+    "name": "Still Water",
+    "description": "Filtered still water, 500ml",
+    "price": 2.99,
+    "category": "Drinks",
+    "tags": ["non-alcoholic", "light"],
+    "emoji": "💧"
+  },
+  {
+    "id": "d002",
+    "name": "Sparkling Water",
+    "description": "San Pellegrino sparkling mineral water, 500ml",
+    "price": 3.99,
+    "category": "Drinks",
+    "tags": ["non-alcoholic", "sparkling"],
+    "emoji": "🫧"
+  },
+  {
+    "id": "d003",
+    "name": "Fresh Lemonade",
+    "description": "Freshly squeezed lemonade with mint, honey, and a pinch of sea salt",
+    "price": 5.99,
+    "category": "Drinks",
+    "tags": ["non-alcoholic", "refreshing", "popular"],
+    "emoji": "🍋"
+  },
+  {
+    "id": "d004",
+    "name": "Craft Cola",
+    "description": "House-made cola with real cane sugar, citrus, and spices",
+    "price": 4.99,
+    "category": "Drinks",
+    "tags": ["non-alcoholic", "sweet"],
+    "emoji": "🥤"
+  },
+  {
+    "id": "d005",
+    "name": "Mango Lassi",
+    "description": "Chilled blended mango, yogurt, cardamom, rose water",
+    "price": 6.99,
+    "category": "Drinks",
+    "tags": ["non-alcoholic", "creamy", "tropical"],
+    "emoji": "🥭"
+  },
+  {
+    "id": "de001",
+    "name": "Molten Lava Cake",
+    "description": "Warm dark chocolate cake with a liquid center, vanilla bean ice cream, raspberry coulis",
+    "price": 10.99,
+    "category": "Desserts",
+    "tags": ["chocolate", "warm", "popular"],
+    "emoji": "🍫"
+  },
+  {
+    "id": "de002",
+    "name": "New York Cheesecake",
+    "description": "Classic baked cheesecake, graham cracker crust, seasonal berry compote",
+    "price": 9.99,
+    "category": "Desserts",
+    "tags": ["classic", "creamy"],
+    "emoji": "🍰"
+  },
+  {
+    "id": "de003",
+    "name": "Tiramisu",
+    "description": "Espresso-soaked ladyfingers, mascarpone cream, cocoa dusting",
+    "price": 10.99,
+    "category": "Desserts",
+    "tags": ["coffee", "italian", "classic"],
+    "emoji": "☕"
+  }
+]
