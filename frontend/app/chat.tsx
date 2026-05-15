@@ -16,11 +16,18 @@ import { api } from "../lib/api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+interface Suggestion {
+  itemId: string;
+  itemName: string;
+  price: number;
+}
+
 interface Message {
   id: string;
   role: "user" | "assistant";
   text: string;
   timestamp: Date;
+  suggestions?: Suggestion[] | null; // quick-add pills shown below AI messages
 }
 
 // ─── Suggested prompts shown at the top of an empty chat ─────────────────────
@@ -34,9 +41,53 @@ const SUGGESTIONS = [
   "Clear my cart",
 ];
 
+// ─── Quick-add pill ───────────────────────────────────────────────────────────
+
+function QuickAddPill({
+  suggestion,
+  onAdd,
+}: {
+  suggestion: Suggestion;
+  onAdd: (s: Suggestion) => void;
+}) {
+  return (
+    <TouchableOpacity
+      onPress={() => onAdd(suggestion)}
+      activeOpacity={0.7}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        backgroundColor: "#fff7ed",
+        borderRadius: 99,
+        borderWidth: 1,
+        borderColor: "#fed7aa",
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        marginRight: 8,
+        marginTop: 6,
+        gap: 4,
+      }}
+    >
+      <Text style={{ fontSize: 12 }}>➕</Text>
+      <Text style={{ color: "#ea580c", fontWeight: "600", fontSize: 12 }}>
+        {suggestion.itemName}
+      </Text>
+      <Text style={{ color: "#9ca3af", fontSize: 11 }}>
+        ${suggestion.price.toFixed(2)}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 // ─── Single message bubble ────────────────────────────────────────────────────
 
-function MessageBubble({ message }: { message: Message }) {
+function MessageBubble({
+  message,
+  onQuickAdd,
+}: {
+  message: Message;
+  onQuickAdd: (s: Suggestion) => void;
+}) {
   const isUser = message.role === "user";
 
   return (
@@ -46,6 +97,7 @@ function MessageBubble({ message }: { message: Message }) {
         justifyContent: isUser ? "flex-end" : "flex-start",
         marginHorizontal: 16,
         marginVertical: 4,
+        alignItems: "flex-start",
       }}
     >
       {/* Avatar for assistant */}
@@ -68,51 +120,61 @@ function MessageBubble({ message }: { message: Message }) {
         </View>
       )}
 
-      {/* Bubble */}
-      <View
-        style={{
-          maxWidth: "75%",
-          backgroundColor: isUser ? "#f97316" : "#ffffff",
-          borderRadius: 18,
-          borderBottomRightRadius: isUser ? 4 : 18,
-          borderBottomLeftRadius: isUser ? 18 : 4,
-          paddingHorizontal: 14,
-          paddingVertical: 10,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 1 },
-          shadowOpacity: 0.06,
-          shadowRadius: 3,
-          elevation: 1,
-        }}
-      >
-        <Text
+      {/* Bubble + suggestion pills */}
+      <View style={{ maxWidth: "75%" }}>
+        <View
           style={{
-            color: isUser ? "#ffffff" : "#1f2937",
-            fontSize: 14,
-            lineHeight: 20,
+            backgroundColor: isUser ? "#f97316" : "#ffffff",
+            borderRadius: 18,
+            borderBottomRightRadius: isUser ? 4 : 18,
+            borderBottomLeftRadius: isUser ? 18 : 4,
+            paddingHorizontal: 14,
+            paddingVertical: 10,
+            shadowColor: "#000",
+            shadowOffset: { width: 0, height: 1 },
+            shadowOpacity: 0.06,
+            shadowRadius: 3,
+            elevation: 1,
           }}
         >
-          {message.text}
-        </Text>
-        <Text
-          style={{
-            color: isUser ? "rgba(255,255,255,0.65)" : "#9ca3af",
-            fontSize: 10,
-            marginTop: 4,
-            textAlign: isUser ? "right" : "left",
-          }}
-        >
-          {message.timestamp.toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })}
-        </Text>
+          <Text
+            style={{
+              color: isUser ? "#ffffff" : "#1f2937",
+              fontSize: 14,
+              lineHeight: 20,
+            }}
+          >
+            {message.text}
+          </Text>
+          <Text
+            style={{
+              color: isUser ? "rgba(255,255,255,0.65)" : "#9ca3af",
+              fontSize: 10,
+              marginTop: 4,
+              textAlign: isUser ? "right" : "left",
+            }}
+          >
+            {message.timestamp.toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+
+        {/* Quick-add pills — only on assistant messages that have suggestions */}
+        {!isUser && message.suggestions && message.suggestions.length > 0 && (
+          <View style={{ flexDirection: "row", flexWrap: "wrap", marginTop: 2, paddingLeft: 2 }}>
+            {message.suggestions.map((s) => (
+              <QuickAddPill key={s.itemId} suggestion={s} onAdd={onQuickAdd} />
+            ))}
+          </View>
+        )}
       </View>
     </View>
   );
 }
 
-// ─── Typing indicator (three animated dots) ───────────────────────────────────
+// ─── Typing indicator (three dots) ───────────────────────────────────────────
 
 function TypingIndicator() {
   return (
@@ -124,7 +186,6 @@ function TypingIndicator() {
         marginVertical: 4,
       }}
     >
-      {/* Avatar */}
       <View
         style={{
           width: 32,
@@ -141,7 +202,6 @@ function TypingIndicator() {
         <Text style={{ fontSize: 16 }}>🍽️</Text>
       </View>
 
-      {/* Dots bubble */}
       <View
         style={{
           backgroundColor: "#ffffff",
@@ -174,7 +234,7 @@ function TypingIndicator() {
   );
 }
 
-// ─── Cart action toast shown briefly after AI updates cart ────────────────────
+// ─── Cart toast ───────────────────────────────────────────────────────────────
 
 function CartToast({ text }: { text: string }) {
   return (
@@ -220,9 +280,12 @@ export default function ChatScreen() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [toastText, setToastText] = useState<string | null>(null);
+  // Conversation history sent to the backend so the AI remembers context
+  const [conversationHistory, setConversationHistory] = useState<
+    { role: "user" | "assistant"; content: string }[]
+  >([]);
   const flatListRef = useRef<FlatList>(null);
 
-  // Auto-scroll to bottom when messages change
   useEffect(() => {
     if (messages.length > 0) {
       setTimeout(
@@ -232,18 +295,15 @@ export default function ChatScreen() {
     }
   }, [messages, loading]);
 
-  // Show toast briefly then hide
   function showToast(text: string) {
     setToastText(text);
     setTimeout(() => setToastText(null), 2500);
   }
 
-  // Apply an action returned by the AI to the cart
   function applyAction(action: any) {
     if (!action) return;
 
     if (action.type === "BATCH") {
-      // For BATCH, apply each sub-action and build a summary toast
       const names = action.actions
         .filter((a: any) => a.type === "ADD_ITEM")
         .map((a: any) => a.itemName)
@@ -257,7 +317,8 @@ export default function ChatScreen() {
     dispatch(action);
 
     if (action.type === "ADD_ITEM") {
-      showToast(`Added ${action.itemName} to cart`);
+      const noteLabel = action.note ? ` (${action.note})` : "";
+      showToast(`Added ${action.itemName}${noteLabel}`);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } else if (action.type === "REMOVE_ITEM") {
       showToast("Item removed from cart");
@@ -265,10 +326,27 @@ export default function ChatScreen() {
     } else if (action.type === "UPDATE_QUANTITY") {
       showToast("Cart updated");
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } else if (action.type === "UPDATE_NOTE") {
+      showToast("Special instruction saved");
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     } else if (action.type === "CLEAR_CART") {
       showToast("Cart cleared");
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
     }
+  }
+
+  // Tapping a quick-add pill adds the item directly without a chat round-trip
+  function handleQuickAdd(suggestion: Suggestion) {
+    dispatch({
+      type: "ADD_ITEM",
+      itemId: suggestion.itemId,
+      itemName: suggestion.itemName,
+      price: suggestion.price,
+      quantity: 1,
+      note: null,
+    });
+    showToast(`Added ${suggestion.itemName}`);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
   }
 
   async function sendMessage(text?: string) {
@@ -291,6 +369,7 @@ export default function ChatScreen() {
       const res = await api.post("/chat", {
         message: messageText,
         cartItems: items,
+        conversationHistory, // send history so AI remembers context
       });
 
       const aiMessage: Message = {
@@ -298,10 +377,18 @@ export default function ChatScreen() {
         role: "assistant",
         text: res.data.reply,
         timestamp: new Date(),
+        suggestions: res.data.suggestions || null,
       };
 
       setMessages((prev) => [...prev, aiMessage]);
       applyAction(res.data.action);
+
+      // Append both turns so future messages have full context
+      setConversationHistory((prev) => [
+        ...prev,
+        { role: "user", content: messageText },
+        { role: "assistant", content: res.data.reply },
+      ]);
     } catch {
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -329,7 +416,9 @@ export default function ChatScreen() {
         ref={flatListRef}
         data={messages}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <MessageBubble message={item} />}
+        renderItem={({ item }) => (
+          <MessageBubble message={item} onQuickAdd={handleQuickAdd} />
+        )}
         contentContainerStyle={{ paddingTop: 16, paddingBottom: 16 }}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={

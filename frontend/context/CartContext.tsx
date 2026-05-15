@@ -7,22 +7,21 @@ export interface CartItem {
   name: string;
   price: number;
   quantity: number;
-  emoji: string;
-}
-
-export interface CartAction {
-  type: "ADD_ITEM" | "REMOVE_ITEM" | "UPDATE_QUANTITY" | "CLEAR_CART" | "BATCH";
-  itemId?: string;
-  itemName?: string;
-  price?: number;
-  quantity?: number;
   emoji?: string;
-  actions?: CartAction[];
+  note?: string | null; // e.g. "no mushrooms", "extra spicy"
 }
 
 interface CartState {
   items: CartItem[];
 }
+
+export type CartAction =
+  | { type: "ADD_ITEM"; itemId: string; itemName: string; price: number; quantity: number; emoji?: string; note?: string | null }
+  | { type: "REMOVE_ITEM"; itemId: string }
+  | { type: "UPDATE_QUANTITY"; itemId: string; quantity: number }
+  | { type: "UPDATE_NOTE"; itemId: string; note: string }
+  | { type: "CLEAR_CART" }
+  | { type: "BATCH"; actions: CartAction[] };
 
 interface CartContextValue {
   items: CartItem[];
@@ -35,13 +34,18 @@ interface CartContextValue {
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
+
     case "ADD_ITEM": {
       const existing = state.items.find((i) => i.itemId === action.itemId);
       if (existing) {
         return {
           items: state.items.map((i) =>
             i.itemId === action.itemId
-              ? { ...i, quantity: i.quantity + (action.quantity ?? 1) }
+              ? {
+                  ...i,
+                  quantity: i.quantity + action.quantity,
+                  note: action.note !== undefined ? action.note : i.note,
+                }
               : i
           ),
         };
@@ -50,51 +54,50 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         items: [
           ...state.items,
           {
-            itemId: action.itemId!,
-            name: action.itemName!,
-            price: action.price!,
-            quantity: action.quantity ?? 1,
-            emoji: action.emoji ?? "🍽️",
+            itemId: action.itemId,
+            name: action.itemName,
+            price: action.price,
+            quantity: action.quantity,
+            emoji: action.emoji,
+            note: action.note ?? null,
           },
         ],
       };
     }
 
     case "REMOVE_ITEM":
-      return {
-        items: state.items.filter((i) => i.itemId !== action.itemId),
-      };
+      return { items: state.items.filter((i) => i.itemId !== action.itemId) };
 
     case "UPDATE_QUANTITY": {
-      if (!action.quantity || action.quantity <= 0) {
-        return {
-          items: state.items.filter((i) => i.itemId !== action.itemId),
-        };
+      if (action.quantity <= 0) {
+        return { items: state.items.filter((i) => i.itemId !== action.itemId) };
       }
       return {
         items: state.items.map((i) =>
-          i.itemId === action.itemId
-            ? { ...i, quantity: action.quantity! }
-            : i
+          i.itemId === action.itemId ? { ...i, quantity: action.quantity } : i
         ),
       };
     }
+
+    case "UPDATE_NOTE":
+      return {
+        items: state.items.map((i) =>
+          i.itemId === action.itemId ? { ...i, note: action.note } : i
+        ),
+      };
 
     case "CLEAR_CART":
       return { items: [] };
 
     case "BATCH":
-      return (action.actions ?? []).reduce(
-        (acc, a) => cartReducer(acc, a),
-        state
-      );
+      return action.actions.reduce(cartReducer, state);
 
     default:
       return state;
   }
 }
 
-// ─── Context + Provider ───────────────────────────────────────────────────────
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 const CartContext = createContext<CartContextValue | null>(null);
 
@@ -102,15 +105,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(cartReducer, { items: [] });
 
   const totalItems = state.items.reduce((sum, i) => sum + i.quantity, 0);
-  const subtotal = state.items.reduce(
-    (sum, i) => sum + i.price * i.quantity,
-    0
-  );
+  const subtotal = state.items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
   return (
-    <CartContext.Provider
-      value={{ items: state.items, totalItems, subtotal, dispatch }}
-    >
+    <CartContext.Provider value={{ items: state.items, totalItems, subtotal, dispatch }}>
       {children}
     </CartContext.Provider>
   );
