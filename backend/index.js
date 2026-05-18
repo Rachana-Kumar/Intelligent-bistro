@@ -12,7 +12,8 @@ app.use(express.json());
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Build a compact menu string to inject into the system prompt
+// ─── Menu helpers ─────────────────────────────────────────────────────────────
+
 function buildMenuContext() {
   return menu
     .map(
@@ -22,110 +23,168 @@ function buildMenuContext() {
     .join("\n");
 }
 
-// Build the system prompt, injecting the current cart state
+// ─── System prompt ────────────────────────────────────────────────────────────
+
 function buildSystemPrompt(cartItems) {
   const cartSummary =
     cartItems && cartItems.length > 0
       ? cartItems
-          .map(
-            (ci) =>
-              `${ci.quantity}x ${ci.name} @ $${ci.price.toFixed(2)} each`
-          )
+          .map((ci) => {
+            const note = ci.note ? ` [note: ${ci.note}]` : "";
+            return `${ci.quantity}x ${ci.name} @ $${ci.price.toFixed(2)} each${note}`;
+          })
           .join(", ")
       : "empty";
 
-  return `You are "Bistro", a warm and helpful AI assistant for The Intelligent Bistro restaurant.
-Your job is to help customers browse the menu and manage their order through natural conversation.
+  return `You are "Bistro", a warm, knowledgeable, and personable AI waiter for The Intelligent Bistro.
+You speak like a friendly human waiter — natural, helpful, and occasionally charming. Never robotic.
 
-MENU:
+════════════════════════════════════
+MENU
+════════════════════════════════════
 ${buildMenuContext()}
 
 CURRENT CART: ${cartSummary}
 
-INSTRUCTIONS:
-- Always respond with a single valid JSON object — no markdown, no code fences, no extra text.
-- The JSON must have exactly two keys: "reply" and "action".
-- "reply": A friendly, conversational string (1-3 sentences max).
-- "action": Either null (if no cart change needed) OR one of these objects:
+════════════════════════════════════
+PERSONALITY & CONVERSATION STYLE
+════════════════════════════════════
+- Greet warmly, remember context from earlier in the conversation.
+- Ask follow-up questions like a real waiter would ("Any dietary restrictions I should know about?").
+- When someone asks what's popular, highlight 2-3 items with a brief personal-sounding endorsement.
+- When someone mentions a diet (vegan, vegetarian, gluten-free, keto, halal, dairy-free, nut allergy, etc.), proactively filter and recommend suitable items from the menu.
+- Upsell naturally — if someone orders a burger, suggest a drink or dessert.
+- If the cart has items, occasionally acknowledge them.
+- Use light, friendly language.
 
-  Add item:
-  { "type": "ADD_ITEM", "itemId": "<id>", "itemName": "<name>", "quantity": <number>, "price": <number> }
+════════════════════════════════════
+DIETARY KEYWORDS → MENU TAGS TO MATCH
+════════════════════════════════════
+vegan          → tag: vegan
+vegetarian     → tag: vegetarian OR vegan
+gluten-free    → tag: gluten-free
+keto           → tag: keto OR low-carb
+dairy-free     → tag: dairy-free
+nut allergy    → avoid tag: contains-nuts
+halal          → tag: halal
+healthy/light  → tag: healthy OR low-cal
 
-  Remove item:
-  { "type": "REMOVE_ITEM", "itemId": "<id>" }
+════════════════════════════════════
+SPECIAL INSTRUCTIONS / NOTES
+════════════════════════════════════
+- If the customer says anything like "no mushrooms", "extra spicy", "on the side", "no sauce", "well done" etc., capture it as a note on the item.
+- The note should be short and clear, e.g. "no mushrooms", "extra spicy", "dressing on the side".
+- Always include the note in the ADD_ITEM or UPDATE_QUANTITY action when relevant.
+- When reading back the cart, mention the note naturally: "You've got the Pasta with no mushrooms."
 
-  Change quantity:
-  { "type": "UPDATE_QUANTITY", "itemId": "<id>", "quantity": <new total> }
+════════════════════════════════════
+OUTPUT FORMAT — CRITICAL
+════════════════════════════════════
+You MUST ALWAYS respond with a single valid JSON object. No prose. No markdown. No code fences.
+The JSON must have exactly these three keys:
 
-  Clear cart:
-  { "type": "CLEAR_CART" }
-
-  Multiple changes:
-  { "type": "BATCH", "actions": [ ...array of individual action objects... ] }
-
-RULES:
-- If asked what is in the cart, read CURRENT CART aloud and set action to null.
-- If you cannot find an item on the menu, apologise and suggest alternatives, set action to null.
-- Never invent items or prices not in the MENU section.
-- "large", "small", "a", "one" all mean quantity 1 unless a number is explicitly given.
-- Match items fuzzily — "spicy chicken", "chicken sandwich" both map to id m002.`;
+{
+  "reply": "<your conversational response as a string>",
+  "action": <null OR one action object>,
+  "suggestions": <null OR array of up to 3 items you mentioned, for quick-add buttons>
 }
 
-// GET /menu — returns the full menu array
+SUGGESTION OBJECTS (only populate when you recommend/mention specific menu items but do NOT add them automatically):
+  { "itemId": "<id>", "itemName": "<name>", "price": <number> }
+
+Example — if you recommend 3 spicy dishes but don't add them:
+  "suggestions": [
+    { "itemId": "m005", "itemName": "Spicy Tuna Tartare", "price": 16.99 },
+    { "itemId": "m002", "itemName": "Spicy Chicken Sandwich", "price": 14.99 },
+    { "itemId": "m008", "itemName": "Chicken Wings", "price": 12.99 }
+  ]
+
+If you are not recommending specific items, set "suggestions": null.
+
+ACTION OBJECTS:
+  Add item:       { "type": "ADD_ITEM", "itemId": "<id>", "itemName": "<name>", "quantity": <n>, "price": <n>, "note": "<special instruction or null>" }
+  Remove item:    { "type": "REMOVE_ITEM", "itemId": "<id>" }
+  Update qty:     { "type": "UPDATE_QUANTITY", "itemId": "<id>", "quantity": <new total> }
+  Update note:    { "type": "UPDATE_NOTE", "itemId": "<id>", "note": "<new note>" }
+  Clear cart:     { "type": "CLEAR_CART" }
+  Multiple items: { "type": "BATCH", "actions": [ ...individual action objects... ] }
+
+RULES:
+- If the user is just chatting, asking questions, or browsing → action: null.
+- If you cannot find an item, apologise and suggest the closest alternatives → action: null, populate suggestions[].
+- Never invent items or prices not in the MENU above.
+- "a", "one", "large", "small" all mean quantity 1 unless a number is stated.
+- Fuzzy match items — "spicy chicken", "hot chicken sandwich" → id m002.
+- NEVER return plain text. ALWAYS return valid JSON. This is non-negotiable.`;
+}
+
+// ─── Robust JSON extractor ────────────────────────────────────────────────────
+
+function extractJSON(raw) {
+  let cleaned = raw
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/```\s*$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(cleaned);
+  } catch (_) {}
+
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  if (match) {
+    try {
+      return JSON.parse(match[0]);
+    } catch (_) {}
+  }
+
+  console.warn("Model returned non-JSON, wrapping:", raw.slice(0, 120));
+  return { reply: cleaned, action: null, suggestions: null };
+}
+
+// ─── Routes ───────────────────────────────────────────────────────────────────
+
 app.get("/menu", (req, res) => {
   res.json({ success: true, menu });
 });
 
-// GET /menu/categories — returns unique category list
 app.get("/menu/categories", (req, res) => {
   const categories = [...new Set(menu.map((item) => item.category))];
   res.json({ success: true, categories });
 });
 
-// POST /chat — sends a user message to Groq and returns reply + action
+// POST /chat
+// Body: { message: string, cartItems: [], conversationHistory: [] }
 app.post("/chat", async (req, res) => {
-  const { message, cartItems = [] } = req.body;
+  const { message, cartItems = [], conversationHistory = [] } = req.body;
 
   if (!message || typeof message !== "string" || message.trim() === "") {
-    return res
-      .status(400)
-      .json({ success: false, error: "message is required" });
+    return res.status(400).json({ success: false, error: "message is required" });
   }
+
+  const recentHistory = conversationHistory.slice(-20);
 
   try {
     const response = await groq.chat.completions.create({
       model: "llama-3.3-70b-versatile",
-      max_tokens: 512,
+      max_tokens: 700,
+      temperature: 0.7,
+      response_format: { type: "json_object" },
       messages: [
         { role: "system", content: buildSystemPrompt(cartItems) },
+        ...recentHistory,
         { role: "user", content: message.trim() },
       ],
     });
 
     const raw = response.choices[0].message.content.trim();
-
-    // Strip markdown code fences if the model wraps them anyway
-    const cleaned = raw
-      .replace(/^```json\s*/i, "")
-      .replace(/```\s*$/i, "")
-      .trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(cleaned);
-    } catch {
-      console.error("JSON parse error. Raw response:", raw);
-      return res.json({
-        success: true,
-        reply: "Sorry, I had a hiccup! Could you repeat that?",
-        action: null,
-      });
-    }
+    const parsed = extractJSON(raw);
 
     return res.json({
       success: true,
       reply: parsed.reply || "Got it!",
       action: parsed.action || null,
+      suggestions: parsed.suggestions || null,
     });
   } catch (err) {
     console.error("Groq API error:", err.message);
@@ -136,7 +195,6 @@ app.post("/chat", async (req, res) => {
   }
 });
 
-// POST /cart/validate — checks that an itemId exists in the menu
 app.post("/cart/validate", (req, res) => {
   const { itemId } = req.body;
   const item = menu.find((m) => m.id === itemId);
@@ -146,7 +204,6 @@ app.post("/cart/validate", (req, res) => {
   res.json({ success: true, item });
 });
 
-// GET /health — quick uptime check
 app.get("/health", (req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });

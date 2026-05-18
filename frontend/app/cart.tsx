@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   Modal,
   ScrollView,
+  TextInput,
 } from "react-native";
 import * as Haptics from "expo-haptics";
 import { useCart, CartItem } from "../context/CartContext";
@@ -87,6 +88,87 @@ function EmptyCart() {
   );
 }
 
+// ─── Inline note editor ───────────────────────────────────────────────────────
+
+function NoteEditor({
+  itemId,
+  initialNote,
+  onSave,
+}: {
+  itemId: string;
+  initialNote: string;
+  onSave: (note: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(initialNote);
+
+  if (!editing) {
+    return (
+      <TouchableOpacity
+        onPress={() => setEditing(true)}
+        style={{ flexDirection: "row", alignItems: "center", marginTop: 5, gap: 4 }}
+      >
+        <Text style={{ fontSize: 11 }}>✏️</Text>
+        <Text style={{ color: "#9ca3af", fontSize: 12 }}>
+          {initialNote ? "Edit instructions" : "Add special instructions…"}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={{ marginTop: 8 }}>
+      <TextInput
+        value={value}
+        onChangeText={setValue}
+        placeholder="e.g. no mushrooms, extra spicy, well done…"
+        placeholderTextColor="#d1d5db"
+        autoFocus
+        style={{
+          backgroundColor: "#f9fafb",
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: "#fed7aa",
+          paddingHorizontal: 10,
+          paddingVertical: 6,
+          fontSize: 13,
+          color: "#1f2937",
+        }}
+      />
+      <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
+        <TouchableOpacity
+          onPress={() => {
+            onSave(value.trim());
+            setEditing(false);
+          }}
+          style={{
+            backgroundColor: "#f97316",
+            borderRadius: 99,
+            paddingHorizontal: 14,
+            paddingVertical: 5,
+          }}
+        >
+          <Text style={{ color: "#fff", fontSize: 12, fontWeight: "600" }}>Save</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => {
+            setValue(initialNote);
+            setEditing(false);
+          }}
+          style={{
+            backgroundColor: "#f3f4f6",
+            borderRadius: 99,
+            paddingHorizontal: 14,
+            paddingVertical: 5,
+          }}
+        >
+          <Text style={{ color: "#6b7280", fontSize: 12 }}>Cancel</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 // ─── Individual cart row ──────────────────────────────────────────────────────
 
 function CartRow({ item }: { item: CartItem }) {
@@ -107,6 +189,11 @@ function CartRow({ item }: { item: CartItem }) {
     dispatch({ type: "REMOVE_ITEM", itemId: item.itemId });
   }
 
+  function saveNote(note: string) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    dispatch({ type: "UPDATE_NOTE", itemId: item.itemId, note });
+  }
+
   return (
     <View
       style={{
@@ -115,8 +202,6 @@ function CartRow({ item }: { item: CartItem }) {
         marginHorizontal: 16,
         marginBottom: 10,
         padding: 14,
-        flexDirection: "row",
-        alignItems: "center",
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.05,
@@ -124,80 +209,112 @@ function CartRow({ item }: { item: CartItem }) {
         elevation: 1,
       }}
     >
-      {/* Emoji */}
-      <View
-        style={{
-          width: 48,
-          height: 48,
-          borderRadius: 12,
-          backgroundColor: "#fff7ed",
-          alignItems: "center",
-          justifyContent: "center",
-          marginRight: 12,
-        }}
-      >
-        <Text style={{ fontSize: 26 }}>{item.emoji}</Text>
+      {/* Top row: emoji + name + line total */}
+      <View style={{ flexDirection: "row", alignItems: "center" }}>
+        {/* Emoji */}
+        <View
+          style={{
+            width: 48,
+            height: 48,
+            borderRadius: 12,
+            backgroundColor: "#fff7ed",
+            alignItems: "center",
+            justifyContent: "center",
+            marginRight: 12,
+          }}
+        >
+          <Text style={{ fontSize: 26 }}>{item.emoji}</Text>
+        </View>
+
+        {/* Name + price */}
+        <View style={{ flex: 1 }}>
+          <Text
+            style={{ color: "#111827", fontWeight: "600", fontSize: 14 }}
+            numberOfLines={1}
+          >
+            {item.name}
+          </Text>
+          <Text style={{ color: "#6b7280", fontSize: 13, marginTop: 2 }}>
+            ${item.price.toFixed(2)} each
+          </Text>
+        </View>
+
+        {/* Quantity control */}
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            backgroundColor: "#f9fafb",
+            borderRadius: 99,
+            borderWidth: 1,
+            borderColor: "#e5e7eb",
+            paddingHorizontal: 6,
+            paddingVertical: 4,
+            marginRight: 12,
+          }}
+        >
+          <TouchableOpacity
+            onPress={decrement}
+            style={{ width: 26, height: 26, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: "#ea580c", fontSize: 18, fontWeight: "700", lineHeight: 22 }}>
+              −
+            </Text>
+          </TouchableOpacity>
+          <Text style={{ color: "#1f2937", fontWeight: "700", fontSize: 14, marginHorizontal: 8 }}>
+            {item.quantity}
+          </Text>
+          <TouchableOpacity
+            onPress={increment}
+            style={{ width: 26, height: 26, alignItems: "center", justifyContent: "center" }}
+          >
+            <Text style={{ color: "#ea580c", fontSize: 18, fontWeight: "700", lineHeight: 22 }}>
+              +
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Line total + remove */}
+        <View style={{ alignItems: "flex-end", minWidth: 56 }}>
+          <Text style={{ color: "#111827", fontWeight: "700", fontSize: 14 }}>
+            ${(item.price * item.quantity).toFixed(2)}
+          </Text>
+          <TouchableOpacity onPress={remove} style={{ marginTop: 4 }}>
+            <Text style={{ color: "#ef4444", fontSize: 11, fontWeight: "500" }}>Remove</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* Name + price */}
-      <View style={{ flex: 1 }}>
-        <Text
-          style={{ color: "#111827", fontWeight: "600", fontSize: 14 }}
-          numberOfLines={1}
+      {/* Note chip — shown when a note exists */}
+      {item.note ? (
+        <View
+          style={{
+            marginTop: 8,
+            alignSelf: "flex-start",
+            backgroundColor: "#fff7ed",
+            borderRadius: 99,
+            paddingHorizontal: 10,
+            paddingVertical: 3,
+            borderWidth: 1,
+            borderColor: "#fed7aa",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 4,
+          }}
         >
-          {item.name}
-        </Text>
-        <Text style={{ color: "#6b7280", fontSize: 13, marginTop: 2 }}>
-          ${item.price.toFixed(2)} each
-        </Text>
-      </View>
+          <Text style={{ fontSize: 11 }}>📝</Text>
+          <Text style={{ color: "#ea580c", fontSize: 12, fontWeight: "500" }}>
+            {item.note}
+          </Text>
+        </View>
+      ) : null}
 
-      {/* Quantity control */}
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          backgroundColor: "#f9fafb",
-          borderRadius: 99,
-          borderWidth: 1,
-          borderColor: "#e5e7eb",
-          paddingHorizontal: 6,
-          paddingVertical: 4,
-          marginRight: 12,
-        }}
-      >
-        <TouchableOpacity
-          onPress={decrement}
-          style={{ width: 26, height: 26, alignItems: "center", justifyContent: "center" }}
-        >
-          <Text style={{ color: "#ea580c", fontSize: 18, fontWeight: "700", lineHeight: 22 }}>
-            −
-          </Text>
-        </TouchableOpacity>
-        <Text style={{ color: "#1f2937", fontWeight: "700", fontSize: 14, marginHorizontal: 8 }}>
-          {item.quantity}
-        </Text>
-        <TouchableOpacity
-          onPress={increment}
-          style={{ width: 26, height: 26, alignItems: "center", justifyContent: "center" }}
-        >
-          <Text style={{ color: "#ea580c", fontSize: 18, fontWeight: "700", lineHeight: 22 }}>
-            +
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Line total */}
-      <View style={{ alignItems: "flex-end", minWidth: 56 }}>
-        <Text style={{ color: "#111827", fontWeight: "700", fontSize: 14 }}>
-          ${(item.price * item.quantity).toFixed(2)}
-        </Text>
-        <TouchableOpacity onPress={remove} style={{ marginTop: 4 }}>
-          <Text style={{ color: "#ef4444", fontSize: 11, fontWeight: "500" }}>
-            Remove
-          </Text>
-        </TouchableOpacity>
-      </View>
+      {/* Inline note editor */}
+      <NoteEditor
+        itemId={item.itemId}
+        initialNote={item.note ?? ""}
+        onSave={saveNote}
+      />
     </View>
   );
 }
@@ -265,7 +382,6 @@ function SuccessModal({
             Your order has been received. Estimated wait time is 20–25 minutes.
           </Text>
 
-          {/* Order total summary */}
           <View
             style={{
               backgroundColor: "#f9fafb",
@@ -312,9 +428,7 @@ function SuccessModal({
               alignItems: "center",
             }}
           >
-            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>
-              Done
-            </Text>
+            <Text style={{ color: "#fff", fontWeight: "700", fontSize: 16 }}>Done</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -412,9 +526,7 @@ export default function CartScreen() {
                 justifyContent: "space-between",
               }}
             >
-              <Text style={{ color: "#111827", fontWeight: "700", fontSize: 16 }}>
-                Total
-              </Text>
+              <Text style={{ color: "#111827", fontWeight: "700", fontSize: 16 }}>Total</Text>
               <Text style={{ color: "#ea580c", fontWeight: "800", fontSize: 18 }}>
                 ${total.toFixed(2)}
               </Text>
@@ -422,7 +534,7 @@ export default function CartScreen() {
           </View>
         </View>
 
-        {/* Clear cart button */}
+        {/* Clear cart */}
         <TouchableOpacity
           onPress={() => {
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
@@ -435,9 +547,7 @@ export default function CartScreen() {
             alignItems: "center",
           }}
         >
-          <Text style={{ color: "#ef4444", fontSize: 14, fontWeight: "500" }}>
-            Clear cart
-          </Text>
+          <Text style={{ color: "#ef4444", fontSize: 14, fontWeight: "500" }}>Clear cart</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -475,7 +585,6 @@ export default function CartScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Success modal */}
       <SuccessModal
         visible={showSuccess}
         subtotal={orderSubtotal}
